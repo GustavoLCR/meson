@@ -2448,9 +2448,12 @@ class AllPlatformTests(BasePlatformTests):
         # Check include order for 'someexe'
         incs = [a for a in split_args(execmd) if a.startswith("-I")]
         self.assertEqual(len(incs), 9)
-        # target private dir
-        someexe_id = Target.construct_id_from_path("sub4", "someexe", "@exe")
-        self.assertPathEqual(incs[0], "-I" + os.path.join("sub4", someexe_id))
+        # Need to run the build so the private dir is created.
+        self.build()
+        pdirs = glob(os.path.join(self.builddir, 'sub4/someexe*.p'))
+        self.assertEqual(len(pdirs), 1)
+        privdir = pdirs[0][len(self.builddir)+1:]
+        self.assertPathEqual(incs[0], "-I" + privdir)
         # target build subdir
         self.assertPathEqual(incs[1], "-Isub4")
         # target source subdir
@@ -2471,7 +2474,10 @@ class AllPlatformTests(BasePlatformTests):
         incs = [a for a in split_args(fxecmd) if a.startswith('-I')]
         self.assertEqual(len(incs), 9)
         # target private dir
-        self.assertPathEqual(incs[0], '-Isomefxe@exe')
+        pdirs = glob(os.path.join(self.builddir, 'somefxe*.p'))
+        self.assertEqual(len(pdirs), 1)
+        privdir = pdirs[0][len(self.builddir)+1:]
+        self.assertPathEqual(incs[0], '-I' + privdir)
         # target build dir
         self.assertPathEqual(incs[1], '-I.')
         # target source dir
@@ -5722,10 +5728,12 @@ class LinuxlikeTests(BasePlatformTests):
     def test_unity_subproj(self):
         testdir = os.path.join(self.common_test_dir, '45 subproject')
         self.init(testdir, extra_args='--unity=subprojects')
-        simpletest_id = Target.construct_id_from_path('subprojects/sublib', 'simpletest', '@exe')
-        self.assertPathExists(os.path.join(self.builddir, 'subprojects/sublib', simpletest_id, 'simpletest-unity0.c'))
-        sublib_id = Target.construct_id_from_path('subprojects/sublib', 'sublib', '@sha')
-        self.assertPathExists(os.path.join(self.builddir, 'subprojects/sublib', sublib_id, 'sublib-unity0.c'))
+        pdirs = glob(os.path.join(self.builddir, 'subprojects/sublib/simpletest*.p'))
+        self.assertEqual(len(pdirs), 1)
+        self.assertPathExists(os.path.join(pdirs[0], 'simpletest-unity0.c'))
+        sdirs = glob(os.path.join(self.builddir, 'subprojects/sublib/*sublib*.p'))
+        self.assertEqual(len(sdirs), 1)
+        self.assertPathExists(os.path.join(sdirs[0], 'sublib-unity0.c'))
         self.assertPathDoesNotExist(os.path.join(self.builddir, 'user@exe/user-unity.c'))
         self.build()
 
